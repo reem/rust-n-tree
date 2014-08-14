@@ -1,4 +1,9 @@
+#![feature(macro_rules)]
 extern crate ntree;
+extern crate test;
+
+use std::rand::{mod, XorShiftRng, Rng};
+use test::Bencher;
 
 use ntree::{NTree, Region};
 use self::fixtures::{QuadTreeRegion, Vec2};
@@ -61,11 +66,43 @@ use self::fixtures::{QuadTreeRegion, Vec2};
     ntree.insert(Vec2 { x: 60.0, y: 45.0 });
 
     assert_eq!(ntree.range_query(&QuadTreeRegion { x: 0.0, y: 0.0, width: 100.0, height: 40.0 })
-                   .unwrap().move_iter().map(|x| x.clone()).collect::<Vec<Vec2>>(),
+                   .map(|x| x.clone()).collect::<Vec<Vec2>>(),
                vec![Vec2 { x: 30.0, y: 30.0 },
                     Vec2 { x: 20.0, y: 20.0 },
                     Vec2 { x: 10.0, y: 10.0 },
                     Vec2 { x: 60.0, y: 20.0 }]);
+}
+
+fn range_query_bench(b: &mut Bencher, n: uint) {
+    let mut rng: XorShiftRng = rand::random();
+
+    let mut ntree = NTree::new(QuadTreeRegion::square(0.0, 0.0, 1.0), 4);
+    for _ in range(0u, n) {
+        ntree.insert(Vec2 { x: rng.gen(), y: rng.gen() });
+    }
+
+    b.iter(|| {
+        let r = QuadTreeRegion {
+            x: rng.gen(),
+            y: rng.gen(),
+            width: rng.gen(),
+            height: rng.gen()
+        };
+        for p in ntree.range_query(&r) { test::black_box(p) }
+    })
+}
+
+#[bench]
+fn bench_range_query_small(b: &mut Bencher) {
+    range_query_bench(b, 10);
+}
+#[bench]
+fn bench_range_query_medium(b: &mut Bencher) {
+    range_query_bench(b, 100);
+}
+#[bench]
+fn bench_range_query_large(b: &mut Bencher) {
+    range_query_bench(b, 10000);
 }
 
 mod fixtures {
