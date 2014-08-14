@@ -93,6 +93,68 @@ impl<P, R: Region<P>> NTree<R, P> {
         split_and_insert(self, point);
         true
     }
+
+    /// Get all the points which within the queried region.
+    ///
+    /// Finds all points which are located in regions overlapping
+    /// the passed in region, then filters out all points which
+    /// are not strictly within the region.
+    pub fn range_query<'a>(&'a self, query: &R) -> Option<Vec<&'a P>> {
+        match *self {
+            Bucket { ref points, ref region, .. } => {
+                if region.overlaps(query) { Some(points.iter().collect()) }
+                else { None }
+            },
+            Branch { ref region, ref subregions, .. } => {
+                if region.overlaps(query) {
+                    Some(subregions
+                        .iter()
+                        .filter_map(|x| x.range_query(query))
+                        .collect::<Vec<Vec<&P>>>()
+                        .as_slice()
+                        .concat_vec()
+                        .move_iter()
+                        .filter(|&p| query.contains(p))
+                        .collect())
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    /// Is the point contained in the n-tree?
+    pub fn contains(&self, point: &P) -> bool {
+        match *self {
+            Bucket { ref region, .. } => region.contains(point),
+            Branch { ref region, .. } => region.contains(point)
+        }
+    }
+
+    /// Get all the points nearby a specified point.
+    ///
+    /// This will return no more than bucket_limit points.
+    pub fn nearby<'a>(&'a self, point: &P) -> Option<&'a[P]> {
+        match *self {
+            Bucket { ref region, ref points, .. } => {
+                if region.contains(point) {
+                    Some(points.as_slice())
+                } else {
+                    None
+                }
+            },
+            Branch { ref region, ref subregions } => {
+                if region.contains(point) {
+                    subregions
+                        .iter()
+                        .find(|r| r.contains(point))
+                        .and_then(|r| r.nearby(point))
+                } else {
+                    None
+                }
+            }
+        }
+    }
 }
 
 fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
