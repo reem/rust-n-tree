@@ -44,3 +44,20 @@ pub enum NTree<R, P> {
     }
 }
 
+impl<P, R: Region<P>> NTree<R, P> {
+    /// Create a new n-tree which contains points within
+    /// the region and whose buckets are limited to the passed-in size.
+    ///
+    /// The number of regions returned by region.split() dictates
+    /// the arity of the tree.
+    pub fn new(region: R, size: u8) -> NTree<R, P> {
+        Branch {
+            subregions: region
+                            .split()
+                            .move_iter()
+                            .map(|r| Bucket { region: r, points: vec![], bucket_limit: size })
+                            .collect(),
+            region: region
+        }
+    }
+}
