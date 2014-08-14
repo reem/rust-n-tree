@@ -5,6 +5,8 @@
 
 //! A generic, n-dimensional quadtree for fast neighbor lookups on multiple axes.
 
+use std::mem;
+
 /// The required interface for Regions in this n-tree.
 ///
 /// Regions must be able to split themselves, tell if they overlap
@@ -60,4 +62,65 @@ impl<P, R: Region<P>> NTree<R, P> {
             region: region
         }
     }
+
+    /// Insert a point into the n-tree, returns true if the point
+    /// is within the n-tree and was inserted and false if not.
+    pub fn insert(&mut self, point: P) -> bool {
+        match *self {
+            Bucket { ref mut points, ref region, ref bucket_limit } => {
+                if region.contains(&point) {
+                    if points.len() as u8 != *bucket_limit {
+                        points.push(point);
+                        return true
+                    }
+                } else {
+                    return false
+                }
+            },
+            Branch { ref region, ref mut subregions, .. } => {
+                if region.contains(&point) {
+                    match subregions.mut_iter().find(|r| r.contains(&point)) {
+                        Some(ref mut subregion) => return subregion.insert(point),
+                        None => return false
+                    }
+                } else {
+                    return false
+                }
+            }
+        };
+
+        // Bucket is full
+        split_and_insert(self, point);
+        true
+    }
 }
+
+fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
+    let mut old_points;
+    let mut old_region;
+    let mut old_bucket_limit;
+
+    match *bucket {
+        // Get the old region, points, and bucket limit.
+        Bucket { ref region, ref mut points, bucket_limit } => {
+            old_region = region.clone();
+            old_points = mem::replace(points, vec![]);
+            old_bucket_limit = bucket_limit;
+        },
+        Branch { .. } => unreachable!()
+    }
+
+    // Replace the bucket with a split branch.
+    *bucket = NTree::new(old_region, old_bucket_limit);
+
+    // Insert all the old points into the right place.
+    for old_point in old_points.move_iter() {
+        bucket.insert(old_point);
+    }
+
+    // Finally, insert the new point.
+    bucket.insert(point);
+}
+
+
+
