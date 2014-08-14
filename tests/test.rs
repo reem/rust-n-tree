@@ -10,8 +10,8 @@ use self::fixtures::{QuadTreeRegion, Vec2};
 
 #[test] fn test_insert() {
     let mut ntree = NTree::new(QuadTreeRegion::square(0.0, 0.0, 100.0), 4);
-    assert!(ntree.insert(Vec2 { x: 49.0, y: 49.0 }));
-    assert_eq!(ntree.nearby(&Vec2 { x: 40.0, y: 40.0 }), Some(&[Vec2 { x: 49.0, y: 49.0 }]));
+    assert!(ntree.insert(Vec2 { x: 50.0, y: 50.0 }));
+    assert_eq!(ntree.nearby(&Vec2 { x: 40.0, y: 40.0 }), Some(&[Vec2 { x: 50.0, y: 50.0 }]));
 }
 
 #[test] fn test_nearby() {
@@ -47,15 +47,36 @@ use self::fixtures::{QuadTreeRegion, Vec2};
     assert_eq!(ntree.nearby(&Vec2 { x: 94.0, y: 12.0 }), Some(&[Vec2 { x: 80.0, y: 20.0 }]));
 }
 
+#[test] fn test_range_query() {
+    let mut ntree = NTree::new(QuadTreeRegion::square(0.0, 0.0, 100.0), 4);
+
+    // Inside (y < 40)
+    ntree.insert(Vec2 { x: 30.0, y: 30.0 });
+    ntree.insert(Vec2 { x: 20.0, y: 20.0 });
+    ntree.insert(Vec2 { x: 10.0, y: 10.0 });
+    ntree.insert(Vec2 { x: 60.0, y: 20.0 });
+
+    // Outside (y > 40)
+    ntree.insert(Vec2 { x: 60.0, y: 59.0 });
+    ntree.insert(Vec2 { x: 60.0, y: 45.0 });
+
+    assert_eq!(ntree.range_query(&QuadTreeRegion { x: 0.0, y: 0.0, width: 100.0, height: 40.0 })
+                   .unwrap().move_iter().map(|x| x.clone()).collect::<Vec<Vec2>>(),
+               vec![Vec2 { x: 30.0, y: 30.0 },
+                    Vec2 { x: 20.0, y: 20.0 },
+                    Vec2 { x: 10.0, y: 10.0 },
+                    Vec2 { x: 60.0, y: 20.0 }]);
+}
+
 mod fixtures {
     use ntree::Region;
 
     #[deriving(Clone, Show, PartialEq)]
     pub struct QuadTreeRegion {
-        x: f64,
-        y: f64,
-        width: f64,
-        height: f64
+        pub x: f64,
+        pub y: f64,
+        pub width: f64,
+        pub height: f64
     }
 
     #[deriving(Show, PartialEq, Clone)]
@@ -71,7 +92,7 @@ mod fixtures {
 
     impl Region<Vec2> for QuadTreeRegion {
         fn contains(&self, p: &Vec2) -> bool {
-            self.x < p.x && self.y < p.y && (self.x + self.width) > p.x && (self.y + self.height) > p.y
+            self.x <= p.x && self.y <= p.y && (self.x + self.width) >= p.x && (self.y + self.height) >= p.y
         }
 
         fn split(&self) -> Vec<QuadTreeRegion> {

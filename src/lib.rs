@@ -184,5 +184,3 @@ fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
     bucket.insert(point);
 }
 
-
-
