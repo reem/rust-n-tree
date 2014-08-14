@@ -5,7 +5,7 @@
 
 //! A generic, n-dimensional quadtree for fast neighbor lookups on multiple axes.
 
-use std::mem;
+use std::{mem, slice};
 
 /// The required interface for Regions in this n-tree.
 ///
@@ -99,27 +99,11 @@ impl<P, R: Region<P>> NTree<R, P> {
     /// Finds all points which are located in regions overlapping
     /// the passed in region, then filters out all points which
     /// are not strictly within the region.
-    pub fn range_query<'a>(&'a self, query: &R) -> Option<Vec<&'a P>> {
-        match *self {
-            Bucket { ref points, ref region, .. } => {
-                if region.overlaps(query) { Some(points.iter().collect()) }
-                else { None }
-            },
-            Branch { ref region, ref subregions, .. } => {
-                if region.overlaps(query) {
-                    Some(subregions
-                        .iter()
-                        .filter_map(|x| x.range_query(query))
-                        .collect::<Vec<Vec<&P>>>()
-                        .as_slice()
-                        .concat_vec()
-                        .move_iter()
-                        .filter(|&p| query.contains(p))
-                        .collect())
-                } else {
-                    None
-                }
-            }
+    pub fn range_query<'t, 'q>(&'t self, query: &'q R) -> RangeQuery<'t, 'q, R, P> {
+        RangeQuery {
+            query: query,
+            points: empty_iterator(),
+            stack: vec![slice::ref_slice(self).iter()],
         }
     }
 
@@ -184,3 +168,90 @@ fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
     bucket.insert(point);
 }
 
+/// An iterator over the points within a region.
+
+// This iterates over the leaves of the tree from left-to-right by
+// maintaining (a) the sequence of points at the current level
+// (possibly empty), and (b) stack of iterators over the remaining
+// children of the parents of the current point.
+pub struct RangeQuery<'t,'q, R, P> {
+    query: &'q R,
+    points: slice::Items<'t, P>,
+    stack: Vec<slice::Items<'t, NTree<R, P>>>
+}
+
+impl<'t, 'q, R: Region<P>, P> Iterator<&'t P> for RangeQuery<'t, 'q, R, P> {
+    fn next(&mut self) -> Option<&'t P> {
+        'outer: loop {
+            // try to find the next point in the region we're
+            // currently examining.
+            for p in self.points {
+                if self.query.contains(p) {
+                    return Some(p)
+                }
+            }
+
+            // no relevant points, so lets find a new region.
+
+            'region_search: loop {
+                let mut children_iter = match self.stack.pop() {
+                    Some(x) => x,
+
+                    // no more regions, so we're over.
+                    None => return None,
+                };
+
+                'children: loop {
+                    // look at the next item in the current sequence
+                    // of children.
+                    match children_iter.next() {
+                        // this region is empty, next region!
+                        None => continue 'region_search,
+
+                        Some(&Bucket { ref region, ref points, .. }) => {
+                            if region.overlaps(self.query) {
+                                // found something with points
+                                self.points = points.iter();
+
+                                // this top region might have more
+                                // buckets/branches, so save it to
+                                // look at next time.
+                                self.stack.push(children_iter);
+                                // lets look at the points.
+                                continue 'outer;
+                            }
+                        }
+                        Some(&Branch { ref region, ref subregions }) => {
+                            // a new subregion
+
+                            if region.overlaps(self.query) {
+                                // recur by saving the current state
+                                // and iterating over the children
+                                // right now.
+                                self.stack.push(children_iter);
+                                children_iter = subregions.iter()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn empty_iterator<'a, P>() -> slice::Items<'a, P> {
+    use std::raw;
+
+    static MARKER: () = ();
+    // this is safe because the length is 0, so the pointer is never
+    // ever dereferenced or read from.
+    //
+    // FIXME: move this upstream
+    unsafe {
+        let array: &'a [P] = mem::transmute(raw::Slice {
+            data: &MARKER,
+            len: 0
+        });
+        array.iter()
+    }
+}
