@@ -104,7 +104,7 @@ impl<P, R: Region<P>> NTree<R, P> {
     pub fn range_query<'t, 'q>(&'t self, query: &'q R) -> RangeQuery<'t, 'q, R, P> {
         RangeQuery {
             query: query,
-            points: empty_iterator(),
+            points: (&[]).iter(),
             stack: vec![slice::ref_slice(self).iter()],
         }
     }
@@ -223,22 +223,5 @@ impl<'t, 'q, R: Region<P>, P> Iterator<&'t P> for RangeQuery<'t, 'q, R, P> {
                 }
             }
         }
-    }
-}
-
-fn empty_iterator<'a, P>() -> slice::Items<'a, P> {
-    use std::raw;
-
-    static MARKER: () = ();
-    // this is safe because the length is 0, so the pointer is never
-    // ever dereferenced or read from.
-    //
-    // FIXME: move this upstream
-    unsafe {
-        let array: &'a [P] = mem::transmute(raw::Slice {
-            data: &MARKER,
-            len: 0
-        });
-        array.iter()
     }
 }
