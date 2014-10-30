@@ -60,7 +60,7 @@ impl<P, R: Region<P>> NTree<R, P> {
             kind: Branch {
                 subregions: region
                     .split()
-                    .move_iter()
+                    .into_iter()
                     .map(|r| NTree {
                         region: r,
                         kind: Bucket { points: vec![], bucket_limit: size }
@@ -84,7 +84,7 @@ impl<P, R: Region<P>> NTree<R, P> {
                 }
             },
             Branch { ref mut subregions } => {
-                match subregions.mut_iter().find(|r| r.contains(&point)) {
+                match subregions.iter_mut().find(|r| r.contains(&point)) {
                     Some(ref mut subregion) => return subregion.insert(point),
                     None => return false
                 }
@@ -151,7 +151,7 @@ fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
     *bucket = NTree::new(bucket.region.clone(), old_bucket_limit);
 
     // Insert all the old points into the right place.
-    for old_point in old_points.move_iter() {
+    for old_point in old_points.into_iter() {
         bucket.insert(old_point);
     }
 
@@ -165,7 +165,7 @@ fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
 // maintaining (a) the sequence of points at the current level
 // (possibly empty), and (b) stack of iterators over the remaining
 // children of the parents of the current point.
-pub struct RangeQuery<'t,'q, R, P> {
+pub struct RangeQuery<'t,'q, R: 'q + 't, P: 't> {
     query: &'q R,
     points: slice::Items<'t, P>,
     stack: Vec<slice::Items<'t, NTree<R, P>>>
