@@ -16,7 +16,7 @@ use self::fixtures::{QuadTreeRegion, Vec2};
 #[test] fn test_insert() {
     let mut ntree = NTree::new(QuadTreeRegion::square(0.0, 0.0, 100.0), 4);
     assert!(ntree.insert(Vec2 { x: 50.0, y: 50.0 }));
-    assert_eq!(ntree.nearby(&Vec2 { x: 40.0, y: 40.0 }), Some(&[Vec2 { x: 50.0, y: 50.0 }]));
+    assert_eq!(ntree.nearby(&Vec2 { x: 40.0, y: 40.0 }), Some([Vec2 { x: 50.0, y: 50.0 }][]));
 }
 
 #[test] fn test_nearby() {
@@ -38,18 +38,18 @@ use self::fixtures::{QuadTreeRegion, Vec2};
 
     // Bottom left corner
     assert_eq!(ntree.nearby(&Vec2 { x: 40.0, y: 40.0 }),
-        Some(&[Vec2 { x: 30.0, y: 30.0 },
-               Vec2 { x: 20.0, y: 20.0 },
-               Vec2 { x: 10.0, y: 10.0 }]));
+        Some([Vec2 { x: 30.0, y: 30.0 },
+              Vec2 { x: 20.0, y: 20.0 },
+              Vec2 { x: 10.0, y: 10.0 }][]));
 
     // Top right corner
-    assert_eq!(ntree.nearby(&Vec2 { x: 90.0, y: 90.0 }), Some(&[Vec2 { x: 75.0, y: 75.0 }]));
+    assert_eq!(ntree.nearby(&Vec2 { x: 90.0, y: 90.0 }), Some([Vec2 { x: 75.0, y: 75.0 }][]));
 
     // Top left corner
-    assert_eq!(ntree.nearby(&Vec2 { x: 20.0, y: 80.0 }), Some(&[Vec2 { x: 40.0, y: 70.0 }]));
+    assert_eq!(ntree.nearby(&Vec2 { x: 20.0, y: 80.0 }), Some([Vec2 { x: 40.0, y: 70.0 }][]));
 
     // Bottom right corner
-    assert_eq!(ntree.nearby(&Vec2 { x: 94.0, y: 12.0 }), Some(&[Vec2 { x: 80.0, y: 20.0 }]));
+    assert_eq!(ntree.nearby(&Vec2 { x: 94.0, y: 12.0 }), Some([Vec2 { x: 80.0, y: 20.0 }][]));
 }
 
 #[test] fn test_range_query() {
