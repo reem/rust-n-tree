@@ -1,11 +1,11 @@
 #![license = "MIT"]
 #![deny(missing_docs)]
 #![deny(warnings)]
-#![feature(struct_variant)]
 
 //! A generic, n-dimensional quadtree for fast neighbor lookups on multiple axes.
 
 use std::{mem, slice};
+use self::NTreeVariant::{Branch, Bucket};
 
 /// The required interface for Regions in this n-tree.
 ///
