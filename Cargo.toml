@@ -1,8 +1,11 @@
 [package]
-
 name = "ntree"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Jonathan Reem <jonathan.reem@gmail.com>"]
+description = "A quadtree-like structure of arbitrary arity"
+repository = "https://github.com/reem/rust-n-tree"
+documentation = "https://crates.fyi/crates/ntree"
+license = "MIT"
 
 [dependencies]
 ref_slice = "1"
