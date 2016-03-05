@@ -1,1 +1,10 @@
 language: rust
+
+matrix:
+    - rust: nightly
+      script:
+          - cargo bench --features bench
+    - rust: nightly
+    - rust: beta
+    - rust: stable
+
