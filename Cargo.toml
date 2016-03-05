@@ -1,11 +1,15 @@
 [package]
 
-name = "n-tree"
+name = "ntree"
 version = "0.0.1"
 authors = ["Jonathan Reem <jonathan.reem@gmail.com>"]
 
-[lib]
+[dependencies]
+ref_slice = "1"
+rand = { version = "0.3", optional = true }
 
-name = "ntree"
-path = "src/lib.rs"
+[features]
+default = []
+nightly = []
+bench = ["nightly", "rand"]
 

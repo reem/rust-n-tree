@@ -1,11 +1,16 @@
-#![license = "MIT"]
 #![deny(missing_docs)]
-#![deny(warnings)]
+#![cfg_attr(test, deny(warnings))]
+#![cfg_attr(feature = "bench", feature(test))]
 
 //! A generic, n-dimensional quadtree for fast neighbor lookups on multiple axes.
 
+extern crate ref_slice;
+
 use std::{mem, slice};
 use self::NTreeVariant::{Branch, Bucket};
+
+#[cfg(test)]
+mod test;
 
 /// The required interface for Regions in this n-tree.
 ///
@@ -105,7 +110,7 @@ impl<P, R: Region<P>> NTree<R, P> {
         RangeQuery {
             query: query,
             points: (&[]).iter(),
-            stack: vec![slice::ref_slice(self).iter()],
+            stack: vec![ref_slice::ref_slice(self).iter()],
         }
     }
 
@@ -135,8 +140,8 @@ impl<P, R: Region<P>> NTree<R, P> {
 }
 
 fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
-    let mut old_points;
-    let mut old_bucket_limit;
+    let old_points;
+    let old_bucket_limit;
 
     match bucket.kind {
         // Get the old region, points, and bucket limit.
@@ -167,16 +172,18 @@ fn split_and_insert<P, R: Region<P>>(bucket: &mut NTree<R, P>, point: P) {
 // children of the parents of the current point.
 pub struct RangeQuery<'t,'q, R: 'q + 't, P: 't> {
     query: &'q R,
-    points: slice::Items<'t, P>,
-    stack: Vec<slice::Items<'t, NTree<R, P>>>
+    points: slice::Iter<'t, P>,
+    stack: Vec<slice::Iter<'t, NTree<R, P>>>
 }
 
-impl<'t, 'q, R: Region<P>, P> Iterator<&'t P> for RangeQuery<'t, 'q, R, P> {
+impl<'t, 'q, R: Region<P>, P> Iterator for RangeQuery<'t, 'q, R, P> {
+    type Item = &'t P;
+
     fn next(&mut self) -> Option<&'t P> {
         'outer: loop {
             // try to find the next point in the region we're
             // currently examining.
-            for p in self.points {
+            for p in &mut self.points {
                 if self.query.contains(p) {
                     return Some(p)
                 }
